@@ -1,0 +1,33 @@
+Lab0
+h1 > h3
+	TCP Test
+		iperf (20s): 
+			> latency: ?
+			> throughput: 14.5 Mbits/s or 11.2 Mbits/s
+			(? Speed of server and client are different)
+		ping (25 packets): 
+			> latency: 163 ms
+			> throughput: 9815 bits/s
+	UDP Test
+		iperf (20s): 
+			> latency: 
+			> throughput: 1.05 Mbits/s
+		ping (25 packets): 
+			> latency: 202 ms
+			> throughput: 
+
+h1 > h3 & h2 > h4
+	TCP
+		throughout: 6.59 / 11.4 Mbits/s = 20
+		latency: 130 / 131 ms
+	UDP
+		throughout: 1.05 / 1.05 Mbits/s
+		latency: 133 / 132
+
+h1 > h4 & h2 > h4
+	TCP
+		throughout: 5.16 / 13.8 Mbits/s = 20
+		latency: 130 / 130 ms
+	UDP
+		throughout: 1.05 / 1.05 Mbits/s
+		latency: 141 / 141
