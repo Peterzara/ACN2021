@@ -1,6 +1,6 @@
 from topo import Edge, Node
 
-
+# utility function
 def _findMinVertex(dist, sptSet):
     min = 0x3f3f3f3f
 
@@ -10,7 +10,11 @@ def _findMinVertex(dist, sptSet):
             minIndex = d
     return minIndex
 
-def dijstra(src, graph, hostList):
+# @Dijkstra: Calculate shortest path for each pair of server, and return a list of path length
+# @src: source node
+# @graph: a list composed of switch & server node
+# @servers: a list of server
+def Dijkstra(src, graph, servers):
     MAX = 0x3f3f3f3f
     vertices = len(graph)
     path = []
@@ -34,10 +38,10 @@ def dijstra(src, graph, hostList):
 
 
     # log host distance
-    for host in hostList:
-        if host == src: # discard itself
+    for server in servers:
+        if server == src: # discard itself
             continue
-        idx = graph.index(host)
+        idx = graph.index(server)
         path.append(dist[idx])
     return path
 

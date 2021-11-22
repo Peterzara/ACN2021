@@ -87,14 +87,21 @@ class Jellyfish:
 class Fattree(Topo):
 
     def __init__(self, num_ports):
+
         Topo.__init__(self)
+        
         self.servers = []
         self.switchList = []
+        # use 
         self.G = TopoVisualize.TopoVisualize()
         self.generate(num_ports)
+        
+        # draw Fattree topology, removing comment 
         # self.G.draw()
+        # using Dijkstra to find shortest path for each pair servers
         list = self.findShortestPath(self.servers)
-        self.statisticPathResult(list)
+        # caculate Fig.1c
+        self.statisticPathResult(list) 
 
 
 
@@ -105,12 +112,9 @@ class Fattree(Topo):
         core_sw_count = (pod//2)**2
         agg_sw_count = pod*pod//2
         edge_sw_count = agg_sw_count
-        host_count = pod**3//4
+        server_count = pod**3//4
 
-        # generate switchList
-        # core switch
-
-
+        # generate core switch
         _cnt = 0
         for j in range(pod//2):
             for i in range(pod//2):
@@ -120,7 +124,7 @@ class Fattree(Topo):
                 swNode = Node(sw, 'switch')
                 self.switchList.append(swNode)
 
-        # aggregation switch
+        # generate aggregation switch
         _cnt = 0
         for p in range(pod):
             for i in range(pod//2):
@@ -130,7 +134,7 @@ class Fattree(Topo):
                 swNode = Node(sw, 'switch')
                 self.switchList.append(swNode)
 
-        # edge switch
+        # generate edge switch
         _cnt = 0
         for p in range(pod):
             for i in range(pod//2):
@@ -171,29 +175,29 @@ class Fattree(Topo):
                     edge.add_edge(a)
 
 
-        # generate links between host and edge sw
+        # generate links between server and edge sw
         for _pod in range(pod):
             for edge in range(pod//2):
                 for port in range(pod//2):
                     e = self.switchList[core_sw_count + agg_sw_count + _pod*pod//2 + edge]
-                    hostID = self.addHost('h10_{}_{}_{}'.format(_pod, edge, port+2))
-                    host = Node(hostID, 'host')
-                    self.addLink(e.id, host.id)
-                    self.G.addEdge([e.id, host.id])
+                    serverID = self.addHost('h10_{}_{}_{}'.format(_pod, edge, port+2))
+                    server = Node(serverID, 'server')
+                    self.addLink(e.id, server.id)
+                    self.G.addEdge([e.id, server.id])
 
-                    e.add_edge(host)
-                    host.add_edge(a)
-                    self.servers.append(host)
+                    e.add_edge(server)
+                    server.add_edge(a)
+                    self.servers.append(server)
 
     def findShortestPath(self, servers):
-        # Graph = switch node + host node
+        # Graph = switch node + server node
         Graph = []
         Graph.extend(self.switchList)
         Graph.extend(self.servers)
 
         shortestPathList = []
         for server in servers:
-            li = Utility.dijstra(server, Graph, servers)
+            li = Utility.Dijkstra(server, Graph, servers)
             shortestPathList.extend(li)
         return shortestPathList
 
@@ -210,4 +214,4 @@ class Fattree(Topo):
 
 
 
-topos = {"fatTreeTopo":(lambda:Fattree(14))}
+topos = {"fatTreeTopo":(lambda:Fattree(4))}
