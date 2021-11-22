@@ -28,6 +28,7 @@ from mininet.util import dumpNodeConnections
 scriptpath = "../lab2/"
 sys.path.append(os.path.abspath(scriptpath))
 import TopoVisualize
+import Utility
 
 
 # Class for an edge in the graph
@@ -91,16 +92,20 @@ class Fattree(Topo):
         self.switchList = []
         self.G = TopoVisualize.TopoVisualize()
         self.generate(num_ports)
-        self.G.draw()
+        # self.G.draw()
+        list = self.findShortestPath(self.servers)
+        self.statisticPathResult(list)
+
+
 
     def generate(self, num_ports):
 
         # TODO: code for generating the fat-tree topology
         pod = num_ports
-        core_sw = (pod//2)**2
-        agg_sw = pod*pod//2
-        edge_sw = agg_sw
-        host = pod**3//4
+        core_sw_count = (pod//2)**2
+        agg_sw_count = pod*pod//2
+        edge_sw_count = agg_sw_count
+        host_count = pod**3//4
 
         # generate switchList
         # core switch
@@ -112,7 +117,8 @@ class Fattree(Topo):
                 # sw = self.addSwitch('c10_{}_{}_{}'.format(pod, j+1, i+1))
                 sw = self.addSwitch('c{}'.format(_cnt))
                 _cnt += 1
-                self.switchList.append(sw)
+                swNode = Node(sw, 'switch')
+                self.switchList.append(swNode)
 
         # aggregation switch
         _cnt = 0
@@ -121,7 +127,8 @@ class Fattree(Topo):
                 # sw = self.addSwitch('a10_{}_{}_1'.format(p, i+(pod//2)))
                 sw = self.addSwitch('a{}'.format(_cnt))
                 _cnt += 1
-                self.switchList.append(sw)
+                swNode = Node(sw, 'switch')
+                self.switchList.append(swNode)
 
         # edge switch
         _cnt = 0
@@ -130,39 +137,77 @@ class Fattree(Topo):
                 # sw = self.addSwitch('e10_{}_{}_1'.format(p, i))
                 sw = self.addSwitch('e{}'.format(_cnt))
                 _cnt += 1
-                self.switchList.append(sw)
+                swNode = Node(sw, 'switch')
+                self.switchList.append(swNode)
 
         # generate links bwtween core sw and aggregation sw
         cnt = 0
         start = 0
-        for core in range(core_sw):
+        for core in range(core_sw_count):
             if cnt==pod//2:
                 start = start + 1
                 cnt = 0
             for port in range(pod):
                 co = self.switchList[core]
-                agg = self.switchList[core_sw + port*pod//2 + start]
-                self.addLink(co, agg)
-                self.G.addEdge([co, agg])
+                agg = self.switchList[core_sw_count + port*pod//2 + start]
+                self.addLink(co.id, agg.id)
+                self.G.addEdge([co.id, agg.id])
+
+                co.add_edge(agg)
+                agg.add_edge(co)
+
             cnt = cnt+1
 
         # generate links between aggregation sw and edge sw
         for _pod in range(pod):
             for agg in range(pod//2):
                 for port in range(pod//2):
-                    a = self.switchList[core_sw + _pod*pod//2 + agg]
-                    edge = self.switchList[core_sw + agg_sw + _pod*pod//2 + port]
-                    self.addLink(a, edge)
-                    self.G.addEdge([a, edge])
+                    a = self.switchList[core_sw_count + _pod*pod//2 + agg]
+                    edge = self.switchList[core_sw_count + agg_sw_count + _pod*pod//2 + port]
+                    self.addLink(a.id, edge.id)
+                    self.G.addEdge([a.id, edge.id])
+
+                    a.add_edge(edge)
+                    edge.add_edge(a)
 
 
         # generate links between host and edge sw
         for _pod in range(pod):
             for edge in range(pod//2):
                 for port in range(pod//2):
-                    e = self.switchList[core_sw + agg_sw + _pod*pod//2 + edge]
-                    host = self.addHost('h10_{}_{}_{}'.format(_pod, edge, port+2))
-                    self.addLink(e, host)
-                    self.G.addEdge([e, host])
+                    e = self.switchList[core_sw_count + agg_sw_count + _pod*pod//2 + edge]
+                    hostID = self.addHost('h10_{}_{}_{}'.format(_pod, edge, port+2))
+                    host = Node(hostID, 'host')
+                    self.addLink(e.id, host.id)
+                    self.G.addEdge([e.id, host.id])
 
-topos = {"fatTreeTopo":(lambda:Fattree(4))}
+                    e.add_edge(host)
+                    host.add_edge(a)
+                    self.servers.append(host)
+
+    def findShortestPath(self, servers):
+        # Graph = switch node + host node
+        Graph = []
+        Graph.extend(self.switchList)
+        Graph.extend(self.servers)
+
+        shortestPathList = []
+        for server in servers:
+            li = Utility.dijstra(server, Graph, servers)
+            shortestPathList.extend(li)
+        return shortestPathList
+
+    def statisticPathResult(self, shortestPathList):
+        result = [0]*10
+        for length in shortestPathList:
+            result[length]+=1
+
+        # print result
+        for idx, val in enumerate(result):
+            print('Length {}: {}%'.format(idx, 100*round(val/len(shortestPathList), 2)))
+        return result
+
+
+
+
+topos = {"fatTreeTopo":(lambda:Fattree(14))}
