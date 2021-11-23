@@ -16,7 +16,6 @@
 # under the License.
 
 import argparse
-import copy
 import math
 import random
 
@@ -31,21 +30,19 @@ class Edge:
         self.left_node = left_node
         self.right_node = right_node
 
-    def remove(self) -> None:
-        """Remove the edge from both edge lists of the nodes."""
-        self.left_node.edges.remove(self)
-        self.right_node.edges.remove(self)
-        self.left_node = None
-        self.right_node = None
-
     def __eq__(self, edge: "Edge") -> bool:
-        if isinstance(edge, Edge):
-            return (
-                self.left_node == edge.left_node and self.right_node == edge.right_node
-            )
+        assert isinstance(edge, Edge)
+        return self.left_node == edge.left_node and self.right_node == edge.right_node
 
     def __repr__(self) -> str:
-        return f"{self.left_node} -> {self.right_node}"
+        return f"{self.left_node}->{self.right_node}"
+
+    def remove(self) -> None:
+        """Remove the edge from both edge lists of the nodes."""
+        self.left_node.remove_edge(self.right_node)
+        self.right_node.remove_edge(self.left_node)
+        self.left_node = None
+        self.right_node = None
 
 
 class Node:
@@ -56,6 +53,13 @@ class Node:
         self.index = index
         self.group = group
 
+    def __eq__(self, node: "Node") -> bool:
+        assert isinstance(node, Node)
+        return self.index == node.index and self.group == node.group
+
+    def __repr__(self) -> str:
+        return f"{self.group}{self.index}"
+
     def add_edge(self, node: "Node") -> None:
         """Add an edge connected to another node.
         The edge lists on the both nodes will be updated.
@@ -63,23 +67,40 @@ class Node:
         self.edges.append(Edge(self, node))
         node.edges.append(Edge(node, self))
 
-    def remove_edge(self, edge: "Edge"):
-        """Remove an edge from the node."""
-        self.edges.remove(edge)
+    def remove_edge(self, node: "Node") -> None:
+        """Remove an edge from the node.
+        The edge lists on the both nodes will be updated.
+        """
+        self.edges.remove(Edge(self, node))
+        node.edges.remove(Edge(node, self))
 
     def is_neighbor(self, node: "Node") -> bool:
         """Decide if another node is a neighbor."""
-        for edge in self.edges:
-            if edge.left_node == node or edge.right_node == node:
-                return True
-        return False
+        return Edge(self, node) in self.edges
 
-    def __eq__(self, node: "Node") -> bool:
-        assert isinstance(node, Node)
-        return self.index == node.index and self.group == node.group
 
-    def __repr__(self) -> str:
-        return f"{self.group}{self.index}"
+class Switch(Node):
+    def __init__(self, index: int, num_ports: int) -> None:
+        super().__init__(index, "sw")
+        self.num_free_ports = num_ports
+
+    def link(self, node: "Node") -> None:
+        assert self.num_free_ports > 0
+        super().add_edge(node)
+        self.num_free_ports -= 1
+        if isinstance(node, Switch):
+            node.num_free_ports -= 1
+
+    def unlink(self, node: "Node") -> None:
+        super().remove_edge(node)
+        self.num_free_ports += 1
+        if isinstance(node, Switch):
+            node.num_free_ports += 1
+
+
+class Server(Node):
+    def __init__(self, index) -> None:
+        super().__init__(index, "sv")
 
 
 class Jellyfish:
@@ -89,7 +110,8 @@ class Jellyfish:
         self.num_servers = num_servers
         self.num_switches = num_switches
         self.num_ports = num_ports
-        self.num_ports_for_server = int(math.ceil(float(num_servers) / num_switches))
+
+        self.num_ports_for_server = int(math.ceil(float(self.num_servers) / self.num_switches))
         self.num_ports_for_switch = self.num_ports - self.num_ports_for_server
 
         self.switches_with_free_ports = []
@@ -97,87 +119,61 @@ class Jellyfish:
         self.servers = []
 
         for i in range(self.num_switches):
-            switch = Node(i, "sw")
+            switch = Switch(i, self.num_ports)
             self.switches_with_free_ports.append(switch)
             for j in range(
                 i * self.num_ports_for_server, (i + 1) * self.num_ports_for_server
             ):
-                server = Node(j, "sv")
-                server.add_edge(switch)
+                server = Server(j)
+                self.servers.append(server)
+                switch.link(server)
 
-    def get_num_switches(self, state: str) -> int:
-        if state == "free":
-            return len(self.switches_with_free_ports)
-        elif state == "used":
-            return len(self.switches_without_free_ports)
-        else:
-            return self.get_num_switches("free") + self.get_num_switches("used")
+    def get_num_switches_with_free_ports(self) -> int:
+        return len(self.switches_with_free_ports)
 
-    def get_num_used_ports(self, switch: "Node") -> int:
-        return len(switch.edges)
+    def get_num_switches_without_free_ports(self) -> int:
+        return len(self.switches_without_free_ports)
 
-    def get_num_free_ports(self, switch: "Node") -> int:
-        return self.num_ports - self.get_num_used_ports(switch)
-
-    def _update_state(self, switch: "Node") -> None:
-        num_used_ports = self.get_num_used_ports(switch)
-        if (
-            num_used_ports < self.num_ports
-            and switch in self.switches_without_free_ports
-        ):
-            self.switches_without_free_ports.remove(switch)
-            self.switches_with_free_ports.append(switch)
-
-        elif (
-            num_used_ports == self.num_ports and switch in self.switches_with_free_ports
-        ):
+    def _update_state(self, switch: Switch) -> None:
+        if switch in self.switches_with_free_ports and switch.num_free_ports == 0:
             self.switches_with_free_ports.remove(switch)
             self.switches_without_free_ports.append(switch)
 
+        if switch in self.switches_without_free_ports and switch.num_free_ports == 1:
+            self.switches_without_free_ports.remove(switch)
+            self.switches_with_free_ports.append(switch)
+
     def _connect_switches(self) -> None:
-        # random.shuffle(self.switches_with_free_ports)
-        old_switches_with_free_ports = copy.deepcopy(self.switches_with_free_ports)
         for switch1 in random.sample(
-            old_switches_with_free_ports, len(old_switches_with_free_ports)
+            self.switches_with_free_ports, self.get_num_switches_with_free_ports()
         ):
-            if switch1 in self.switches_without_free_ports:
+            if switch1.num_free_ports == 0:
                 continue
 
             for switch2 in random.sample(
-                old_switches_with_free_ports, len(old_switches_with_free_ports)
+                self.switches_with_free_ports, self.get_num_switches_with_free_ports()
             ):
-                if switch1 in self.switches_without_free_ports:
+                if switch1.num_free_ports == 0:
                     break
 
-                if switch2 == switch1 or switch2 in self.switches_without_free_ports:
+                if switch2 == switch1 or switch2.num_free_ports == 0:
                     continue
 
                 if not switch1.is_neighbor(switch2):
-                    switch1.add_edge(switch2)
-                    # print(f"{switch1} connected to {switch2}")
+                    switch1.link(switch2)
                     self._update_state(switch1)
                     self._update_state(switch2)
-
-    def _swap_links(self, switch1: Node, switch2: Node, switch3: Node) -> None:
-        switch2.remove_edge(Edge(switch2, switch3))
-        switch3.remove_edge(Edge(switch3, switch2))
-
-        switch1.add_edge(switch2)
-        switch1.add_edge(switch3)
-
-        self._update_state(switch1)
-        self._update_state(switch2)
-        self._update_state(switch3)
 
     def generate(self) -> None:
         while True:
             self._connect_switches()
 
-            if (self.get_num_switches("free") == 0) or (
-                self.get_num_switches("used") == 1
-                and self.get_num_free_ports(self.switches_with_free_ports[0]) == 1
-            ):
-                break
+            if self.get_num_switches_with_free_ports() == 0:
+                return
+
+            if self.get_num_switches_with_free_ports() == 1:
+                if self.switches_with_free_ports[0].num_free_ports == 1:
+                    return
 
             switch1 = random.choice(self.switches_with_free_ports)
 
@@ -197,7 +193,13 @@ class Jellyfish:
                 ):
                     break
 
-            self._swap_links(switch1, switch2, switch3)
+            switch2.unlink(switch3)
+            switch1.link(switch2)
+            switch1.link(switch3)
+
+            self._update_state(switch1)
+            self._update_state(switch2)
+            self._update_state(switch3)
 
     def plot(self, fname: str) -> None:
         g = nx.Graph()
@@ -218,15 +220,29 @@ def parse_args():
     parser = argparse.ArgumentParser(
         usage="Usage: python jellyfish.py --output --num_switches --num_ports --num_servers"
     )
-    parser.add_argument("--output", help="Output image path", action="store", type=str)
     parser.add_argument(
-        "--num_switches", help="Number of switches", action="store", type=int
+        "--output",
+        help="Output image path",
+        action="store",
+        type=str,
+        default="Figures/jellyfish.png",
     )
     parser.add_argument(
-        "--num_ports", help="Number of ports on switches", action="store", type=int
+        "--num_switches",
+        help="Number of switches",
+        action="store",
+        type=int,
+        default=20,
     )
     parser.add_argument(
-        "--num_servers", help="Number of servers", action="store", type=int
+        "--num_ports",
+        help="Number of ports on switches",
+        action="store",
+        type=int,
+        default=4,
+    )
+    parser.add_argument(
+        "--num_servers", help="Number of servers", action="store", type=int, default=16
     )
     return parser.parse_args()
 
