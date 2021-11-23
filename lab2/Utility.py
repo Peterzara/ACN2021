@@ -1,4 +1,4 @@
-from topo import Edge, Node
+import topo
 
 # utility function
 def _findMinVertex(dist, sptSet):

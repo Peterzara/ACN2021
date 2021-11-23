@@ -89,26 +89,15 @@ class Fattree(Topo):
     def __init__(self, num_ports):
 
         Topo.__init__(self)
-        
         self.servers = []
         self.switchList = []
-        # use 
         self.G = TopoVisualize.TopoVisualize()
-        self.generate(num_ports)
+        self.num_ports = num_ports
         
-        # draw Fattree topology, removing comment 
-        # self.G.draw()
-        # using Dijkstra to find shortest path for each pair servers
-        list = self.findShortestPath(self.servers)
-        # caculate Fig.1c
-        self.statisticPathResult(list) 
 
+    def generate(self):
 
-
-    def generate(self, num_ports):
-
-        # TODO: code for generating the fat-tree topology
-        pod = num_ports
+        pod = self.num_ports
         core_sw_count = (pod//2)**2
         agg_sw_count = pod*pod//2
         edge_sw_count = agg_sw_count
@@ -189,29 +178,31 @@ class Fattree(Topo):
                     server.add_edge(a)
                     self.servers.append(server)
 
-    def findShortestPath(self, servers):
+    def findShortestPath(self):
         # Graph = switch node + server node
         Graph = []
         Graph.extend(self.switchList)
         Graph.extend(self.servers)
 
         shortestPathList = []
-        for server in servers:
-            li = Utility.Dijkstra(server, Graph, servers)
+        for server in self.servers:
+            li = Utility.Dijkstra(server, Graph, self.servers)
             shortestPathList.extend(li)
         return shortestPathList
 
     def statisticPathResult(self, shortestPathList):
+        
         result = [0]*10
         for length in shortestPathList:
             result[length]+=1
 
         # print result
         for idx, val in enumerate(result):
-            print('Length {}: {}%'.format(idx, 100*round(val/len(shortestPathList), 2)))
+            print('Length {}: {}%'.format(idx+1, 100*round(val/len(shortestPathList), 2)))
         return result
 
+    def visualizeTopo(self):
+        self.G.draw()
 
 
-
-topos = {"fatTreeTopo":(lambda:Fattree(4))}
+# topos = {"fatTreeTopo":(lambda:Fattree(4))}
