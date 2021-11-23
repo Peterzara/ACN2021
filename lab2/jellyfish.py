@@ -15,6 +15,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import argparse
 import copy
 import math
 import random
@@ -136,11 +137,15 @@ class Jellyfish:
     def _connect_switches(self) -> None:
         # random.shuffle(self.switches_with_free_ports)
         old_switches_with_free_ports = copy.deepcopy(self.switches_with_free_ports)
-        for switch1 in random.sample(old_switches_with_free_ports, len(old_switches_with_free_ports)):
+        for switch1 in random.sample(
+            old_switches_with_free_ports, len(old_switches_with_free_ports)
+        ):
             if switch1 in self.switches_without_free_ports:
                 continue
 
-            for switch2 in random.sample(old_switches_with_free_ports, len(old_switches_with_free_ports)):
+            for switch2 in random.sample(
+                old_switches_with_free_ports, len(old_switches_with_free_ports)
+            ):
                 if switch1 in self.switches_without_free_ports:
                     break
 
@@ -209,7 +214,29 @@ class Jellyfish:
         plt.savefig(fname)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        usage="Usage: python jellyfish.py --output --num_switches --num_ports --num_servers"
+    )
+    parser.add_argument("--output", help="Output image path", action="store", type=str)
+    parser.add_argument(
+        "--num_switches", help="Number of switches", action="store", type=int
+    )
+    parser.add_argument(
+        "--num_ports", help="Number of ports on switches", action="store", type=int
+    )
+    parser.add_argument(
+        "--num_servers", help="Number of servers", action="store", type=int
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    jellyfish = Jellyfish(num_switches=20, num_ports=8, num_servers=16)
+    args = parse_args()
+    jellyfish = Jellyfish(
+        num_switches=args.num_switches,
+        num_ports=args.num_ports,
+        num_servers=args.num_servers,
+    )
     jellyfish.generate()
-    jellyfish.plot("Figures/jellyfish.png")
+    jellyfish.plot(args.output)
