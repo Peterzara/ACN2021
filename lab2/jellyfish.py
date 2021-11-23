@@ -18,6 +18,7 @@
 import argparse
 import math
 import random
+from typing import List, Union
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -78,6 +79,9 @@ class Node:
         """Decide if another node is a neighbor."""
         return Edge(self, node) in self.edges
 
+    def get_neighbors(self) -> List[Union["Switch", "Server"]]:
+        return [edge.right_node for edge in self.edges]
+
 
 class Switch(Node):
     def __init__(self, index: int, num_ports: int) -> None:
@@ -97,6 +101,13 @@ class Switch(Node):
         if isinstance(node, Switch):
             node.num_free_ports += 1
 
+    def get_linked_switches(self) -> List["Switch"]:
+        return [
+            neighbor
+            for neighbor in super().get_neighbors()
+            if isinstance(neighbor, Switch)
+        ]
+
 
 class Server(Node):
     def __init__(self, index) -> None:
@@ -111,7 +122,9 @@ class Jellyfish:
         self.num_switches = num_switches
         self.num_ports = num_ports
 
-        self.num_ports_for_server = int(math.ceil(float(self.num_servers) / self.num_switches))
+        self.num_ports_for_server = int(
+            math.ceil(float(self.num_servers) / self.num_switches)
+        )
         self.num_ports_for_switch = self.num_ports - self.num_ports_for_server
 
         self.switches_with_free_ports = []
@@ -176,6 +189,10 @@ class Jellyfish:
                     return
 
             switch1 = random.choice(self.switches_with_free_ports)
+            if switch1.num_free_ports == 1:
+                switch_to_unlink = random.choice(switch1.get_linked_switches())
+                switch1.unlink(switch_to_unlink)
+                self._update_state(switch_to_unlink)
 
             while True:
                 switch2 = random.choice(self.switches_without_free_ports)
