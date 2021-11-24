@@ -220,16 +220,20 @@ class Jellyfish:
 
     def plot(self, fname: str) -> None:
         g = nx.Graph()
+        graph = []
         for node in (
             self.switches_without_free_ports
             + self.switches_with_free_ports
             + self.servers
         ):
-            g.add_node(repr(node))
+            # g.add_node(repr(node))
             for edge in node.edges:
-                g.add_edge(repr(edge.left_node), repr(edge.right_node))
-
-        nx.draw(g, with_labels=True, node_size=100)
+                # g.add_edge(repr(edge.left_node), repr(edge.right_node))
+                graph.append([repr(edge.left_node), repr(edge.right_node)])
+        
+        g.add_edges_from(graph)
+        nx.draw_networkx(g, with_labels=True, node_size=100)
+        plt.show()
         plt.savefig(fname)
 
 
@@ -273,3 +277,4 @@ if __name__ == "__main__":
     )
     jellyfish.generate()
     jellyfish.plot(args.output)
+
