@@ -20,28 +20,24 @@ import sys
 import random
 import queue
 from mininet.topo import Topo
-from mininet.net import Mininet
-from mininet.node import RemoteController
-from mininet.link import TCLink
-from mininet.util import dumpNodeConnections
 
 scriptpath = "../lab2/"
 sys.path.append(os.path.abspath(scriptpath))
 import TopoVisualize
-import Utility
+import jellyfish as JF
 
 
 # Class for an edge in the graph
 class Edge:
     def __init__(self):
-        self.lnode = None
-        self.rnode = None
+        self.left_node = None
+        self.right_node = None
     
     def remove(self):
-        self.lnode.edges.remove(self)
-        self.rnode.edges.remove(self)
-        self.lnode = None
-        self.rnode = None
+        self.left_node.edges.remove(self)
+        self.right_node.edges.remove(self)
+        self.left_node = None
+        self.right_node = None
 
 # Class for a node in the graph
 class Node:
@@ -53,8 +49,8 @@ class Node:
     # Add an edge connected to another node
     def add_edge(self, node):
         edge = Edge()
-        edge.lnode = self
-        edge.rnode = node
+        edge.left_node = self
+        edge.right_node = node
         self.edges.append(edge)
         node.edges.append(edge)
         return edge
@@ -66,7 +62,7 @@ class Node:
     # Decide if another node is a neighbor
     def is_neighbor(self, node):
         for edge in self.edges:
-            if edge.lnode == node or edge.rnode == node:
+            if edge.left_node == node or edge.right_node == node:
                 return True
         return False
 
@@ -76,12 +72,28 @@ class Jellyfish:
     def __init__(self, num_servers, num_switchList, num_ports):
         self.servers = []
         self.switchList = []
-        self.generate(num_servers, num_switchList, num_ports)
+        self.num_servers = num_servers
+        self.num_switchList = num_switchList
+        self.num_ports = num_ports
+        self.jf = None
 
-    def generate(self, num_servers, num_switchList, num_ports):
+    def generate(self):
         
         # TODO: code for generating the jellyfish topology
-        return
+        self.jf = JF.Jellyfish(
+            num_switches = self.num_switchList,
+            num_ports = self.num_ports,
+            num_servers = self.num_servers,
+        )
+        self.jf.generate()
+        
+        self.servers = self.jf.servers
+        self.switchList.extend(self.jf.switches_with_free_ports)
+        self.switchList.extend(self.jf.switches_without_free_ports)
+
+    def plot(self):
+        self.jf.plot('Figures/jellyfish.png')
+
 
 
 class Fattree(Topo):
@@ -94,7 +106,6 @@ class Fattree(Topo):
         self.G = TopoVisualize.TopoVisualize()
         self.num_ports = num_ports
         
-
     def generate(self):
 
         pod = self.num_ports
@@ -178,30 +189,7 @@ class Fattree(Topo):
                     server.add_edge(a)
                     self.servers.append(server)
 
-    def findShortestPath(self):
-        # Graph = switch node + server node
-        Graph = []
-        Graph.extend(self.switchList)
-        Graph.extend(self.servers)
-
-        shortestPathList = []
-        for server in self.servers:
-            li = Utility.Dijkstra(server, Graph, self.servers)
-            shortestPathList.extend(li)
-        return shortestPathList
-
-    def statisticPathResult(self, shortestPathList):
-        
-        result = [0]*10
-        for length in shortestPathList:
-            result[length]+=1
-
-        # print result
-        for idx, val in enumerate(result):
-            print('Length {}: {}%'.format(idx+1, 100*round(val/len(shortestPathList), 2)))
-        return result
-
-    def visualizeTopo(self):
+    def plot(self):
         self.G.draw()
 
 
