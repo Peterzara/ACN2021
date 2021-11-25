@@ -24,6 +24,11 @@ import Utility as ut
 num_servers = 16
 num_switches = 20
 num_ports = 4
+
+# num_servers = 432
+# num_switches = 180
+# num_ports = 12
+
 # num_servers = 686
 # num_switches = 245
 # num_ports = 14
@@ -34,16 +39,16 @@ ft_topo.generate()
 jf_topo.generate()
 ft_topo.plot()
 jf_topo.plot()
-ft_list = ut.findShortestPath(ft_topo.switchList, ft_topo.servers)
-jf_list = ut.findShortestPath(jf_topo.switchList, jf_topo.servers)
-ft_res = ut.statisticPathResult(ft_list)
-jf_res = ut.statisticPathResult(jf_list)
+# ft_list = ut.findShortestPath(ft_topo.switchList, ft_topo.servers)
+# jf_list = ut.findShortestPath(jf_topo.switchList, jf_topo.servers)
+# ft_res = ut.statisticPathResult(ft_list)
+# jf_res = ut.statisticPathResult(jf_list)
 
 
 # TODO: code for reproducing Figure 1(c) in the jellyfish paper
 
-ft_data = [x/sum(ft_res) for x in ft_res[1:6]]
-jf_data = [x/sum(jf_res) for x in jf_res[1:6]]
+ft_data = [x/sum(ft_res) for x in ft_res[1:7]]
+jf_data = [x/sum(jf_res) for x in jf_res[1:7]]
 
 barWidth = 0.25
 fig = plt.subplots(figsize =(12, 8))
@@ -51,14 +56,14 @@ fig = plt.subplots(figsize =(12, 8))
 br1 = np.arange(len(ft_data))
 br2 = [x + barWidth for x in br1]
 
-plt.bar(br1, ft_data, color ='b', width = barWidth,
-        edgecolor ='grey', label ='Fattree')
 plt.bar(br2, jf_data, color ='r', width = barWidth,
-        edgecolor ='grey', label ='Jellyfish')
+        edgecolor ='black', label ='Jellyfish')
+plt.bar(br1, ft_data, color ='b', width = barWidth,
+        edgecolor ='black', label ='Fattree')
 
 plt.xlabel('Path length', fontsize = 15)
-plt.ylabel('Fraction of Server', fontsize = 15)
-plt.xticks([r + barWidth for r in range(len(ft_data))], ['2', '3', '4', '5', '6'])
+plt.ylabel('Fraction of Server Pairs', fontsize = 15)
+plt.xticks([r + barWidth for r in range(len(ft_data))], ['1', '2', '3', '4', '5', '6'])
 
 plt.legend()
 plt.show()
