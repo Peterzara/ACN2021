@@ -15,6 +15,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import argparse
 import random
 from collections import defaultdict, OrderedDict
 from itertools import tee
@@ -44,7 +45,7 @@ def k_way_equal_cost_multi_path_routing(paths, k):
     return result
 
 
-def count_edges(paths):
+def count_num_of_paths_edge_is_on(paths): # Link -> # paths
     result = defaultdict(int)
     for path in paths:
         for left_node, right_node in pairwise(path):
@@ -72,21 +73,34 @@ def gen_graph_points(num_edges, count_dict):
 
     return graph_points
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        usage="Usage: python jellyfish.py --output --num_samples"
+    )
+    parser.add_argument(
+        "--output",
+        help="Output image path",
+        action="store",
+        type=str,
+        default="Figures/figure_9.png",
+    )
+    parser.add_argument(
+        "--num_samples", help="Number of samples to be performed", action="store", type=int, default=30
+    )
+    return parser.parse_args()
+
 
 if __name__ == "__main__":
-    # num_servers = 686
-    # num_switches = 245
-    # num_ports = 14
-
-    num_servers = 16
-    num_switches = 20
-    num_ports = 4
+    args = parse_args()
+    num_servers = 686
+    num_switches = 245
+    num_ports = 14
 
     print("Generate Jellyfish topology...")
     jellyfish = Jellyfish(num_servers, num_switches, num_ports)
     jellyfish.generate()
 
-    num_samples = jellyfish.num_servers * jellyfish.num_servers
+    num_samples = args.num_samples # * jellyfish.num_servers
 
     k_8, e_8, e_64 = set(), set(), set()
 
@@ -105,9 +119,9 @@ if __name__ == "__main__":
         e_64.update(k_way_equal_cost_multi_path_routing(shortest_paths, 64))
 
     print("Counting distinct edges...")
-    k_8_edges_count = count_edges(k_8)
-    e_8_edges_count = count_edges(e_8)
-    e_64_edges_count = count_edges(e_64)
+    k_8_edges_count = count_num_of_paths_edge_is_on(k_8)
+    e_8_edges_count = count_num_of_paths_edge_is_on(e_8)
+    e_64_edges_count = count_num_of_paths_edge_is_on(e_64)
 
     k_8_points = gen_graph_points(jellyfish.num_edges, k_8_edges_count)
     e_8_points = gen_graph_points(jellyfish.num_edges, e_8_edges_count)
@@ -120,5 +134,5 @@ if __name__ == "__main__":
     plt.legend()
     plt.xlabel("Rank of Link")
     plt.ylabel("# of Distinct Paths Link is on")
-    plt.savefig("Figures/figure_9_2.png")
+    plt.savefig(args.output)
     plt.close()
