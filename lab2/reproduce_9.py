@@ -15,13 +15,110 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import topo
+import random
+from collections import defaultdict, OrderedDict
+from itertools import tee
 
-# Setup for Jellyfish
-num_servers = 686
-num_switches = 245
-num_ports = 14
+import matplotlib.pyplot as plt
+from jellyfish import *
+from tqdm import tqdm
 
-jf_topo = topo.Jellyfish(num_servers, num_switches, num_ports)
 
-# TODO: code for reproducing Figure 9 in the jellyfish paper
+def pairwise(iterable):
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+
+def k_shortest_path_routing(paths, k):
+    return [tuple(path) for path in paths[:k]]
+
+
+def k_way_equal_cost_multi_path_routing(paths, k):
+    result = [tuple(paths[0])]
+    for i in range(1, k):
+        if len(paths[i]) != len(paths[i - 1]):
+            return result
+
+        result.append(tuple(paths[i]))
+    return result
+
+
+def count_edges(paths):
+    result = defaultdict(int)
+    for path in paths:
+        for left_node, right_node in pairwise(path):
+            result[Edge(left_node, right_node)] += 1
+            result[Edge(right_node, left_node)] += 1
+
+    return result
+
+
+def gen_graph_points(num_edges, count_dict):
+    graph_points = {"rank": [0], "num_paths": [0]}
+    ordered_dict = OrderedDict(sorted(count_dict.items(), key=lambda x: x[1]))
+
+    start_rank = num_edges - len(ordered_dict)
+    previous_num_paths = 0
+
+    graph_points["rank"].append(start_rank)
+    graph_points["num_paths"].append(previous_num_paths)
+
+    for rank, (edge, num_paths) in enumerate(ordered_dict.items(), start_rank + 1):
+        if num_paths != previous_num_paths:
+            graph_points["rank"].append(rank)
+            graph_points["num_paths"].append(previous_num_paths)
+            previous_num_paths = num_paths
+
+    return graph_points
+
+
+if __name__ == "__main__":
+    # num_servers = 686
+    # num_switches = 245
+    # num_ports = 14
+
+    num_servers = 16
+    num_switches = 20
+    num_ports = 4
+
+    print("Generate Jellyfish topology...")
+    jellyfish = Jellyfish(num_servers, num_switches, num_ports)
+    jellyfish.generate()
+
+    num_samples = jellyfish.num_servers * jellyfish.num_servers
+
+    k_8, e_8, e_64 = set(), set(), set()
+
+    print("Start random permutation...")
+    for _ in tqdm(range(num_samples)):
+        while True:
+            server1 = random.choice(jellyfish.servers)
+            server2 = random.choice(jellyfish.servers)
+            if server1 != server2:
+                break
+
+        shortest_paths = jellyfish.find_shortest_paths(server1, server2, 64)
+
+        k_8.update(k_shortest_path_routing(shortest_paths, 8))
+        e_8.update(k_way_equal_cost_multi_path_routing(shortest_paths, 8))
+        e_64.update(k_way_equal_cost_multi_path_routing(shortest_paths, 64))
+
+    print("Counting distinct edges...")
+    k_8_edges_count = count_edges(k_8)
+    e_8_edges_count = count_edges(e_8)
+    e_64_edges_count = count_edges(e_64)
+
+    k_8_points = gen_graph_points(jellyfish.num_edges, k_8_edges_count)
+    e_8_points = gen_graph_points(jellyfish.num_edges, e_8_edges_count)
+    e_64_points = gen_graph_points(jellyfish.num_edges, e_64_edges_count)
+
+    print("Plotting...")
+    plt.step(k_8_points["rank"], k_8_points["num_paths"], label="8 Shortest Paths")
+    plt.step(e_8_points["rank"], e_8_points["num_paths"], label="8-way ECMP")
+    plt.step(e_64_points["rank"], e_64_points["num_paths"], label="64-way ECMP")
+    plt.legend()
+    plt.xlabel("Rank of Link")
+    plt.ylabel("# of Distinct Paths Link is on")
+    plt.savefig("Figures/figure_9_2.png")
+    plt.close()

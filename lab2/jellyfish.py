@@ -135,6 +135,10 @@ class Topology:
         switches: List["Node"] = self.switches
         return servers + switches
 
+    @property
+    def num_edges(self):
+        return sum([len(node.neighbors) for node in self.nodes])
+
     def _find(
         self, node_to_find: Union["Server", "Switch"]
     ) -> Optional[Union["Server", "Switch"]]:
