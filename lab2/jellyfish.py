@@ -18,7 +18,8 @@
 import argparse
 import math
 import random
-from typing import List, Union
+import sys
+from typing import List, Optional, Set, Tuple, Union
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -32,11 +33,13 @@ class Edge:
         self.right_node = right_node
 
     def __eq__(self, edge: "Edge") -> bool:
-        assert isinstance(edge, Edge)
         return self.left_node == edge.left_node and self.right_node == edge.right_node
 
     def __repr__(self) -> str:
         return f"{self.left_node}->{self.right_node}"
+
+    def __hash__(self) -> int:
+        return hash(self.__repr__())
 
     def remove(self) -> None:
         """Remove the edge from both edge lists of the nodes."""
@@ -49,17 +52,19 @@ class Edge:
 class Node:
     """Class for a node in the graph."""
 
-    def __init__(self, index: int, group: str) -> None:
+    def __init__(self, index: int = -1, group: str = "") -> None:
         self.edges = []
         self.index = index
         self.group = group
 
     def __eq__(self, node: "Node") -> bool:
-        assert isinstance(node, Node)
         return self.index == node.index and self.group == node.group
 
     def __repr__(self) -> str:
         return f"{self.group}{self.index}"
+
+    def __hash__(self) -> int:
+        return hash(self.__repr__())
 
     def add_edge(self, node: "Node") -> None:
         """Add an edge connected to another node.
@@ -79,7 +84,8 @@ class Node:
         """Decide if another node is a neighbor."""
         return Edge(self, node) in self.edges
 
-    def get_neighbors(self) -> List[Union["Switch", "Server"]]:
+    @property
+    def neighbors(self) -> List[Union["Switch", "Server"]]:
         return [edge.right_node for edge in self.edges]
 
 
@@ -101,11 +107,10 @@ class Switch(Node):
         if isinstance(node, Switch):
             node.num_free_ports += 1
 
-    def get_linked_switches(self) -> List["Switch"]:
+    @property
+    def linked_switches(self) -> List["Switch"]:
         return [
-            neighbor
-            for neighbor in super().get_neighbors()
-            if isinstance(neighbor, Switch)
+            neighbor for neighbor in super().neighbors if isinstance(neighbor, Switch)
         ]
 
 
@@ -114,25 +119,156 @@ class Server(Node):
         super().__init__(index, "sv")
 
 
-class Jellyfish:
-    """Jellyfish topology generator."""
+class Topology:
+    """Topology base class."""
 
     def __init__(self, num_servers: int, num_switches: int, num_ports: int) -> None:
         self.num_servers = num_servers
         self.num_switches = num_switches
         self.num_ports = num_ports
+        self.servers = []
+        self.switches = []
+
+    @property
+    def nodes(self) -> List[Union["Switch", "Server", "Node"]]:
+        servers: List["Node"] = self.servers
+        switches: List["Node"] = self.switches
+        return servers + switches
+
+    @property
+    def num_edges(self):
+        return sum([len(node.neighbors) for node in self.nodes])
+
+    def _find(
+        self, node_to_find: Union["Server", "Switch"]
+    ) -> Optional[Union["Server", "Switch"]]:
+        if isinstance(node_to_find, Server):
+            nodes_to_find = self.servers
+        elif isinstance(node_to_find, Switch):
+            nodes_to_find = self.switches
+        else:
+            return None
+
+        for node in nodes_to_find:
+            if node == node_to_find:
+                return node
+
+        return None
+
+    def find_shortest_path(
+        self,
+        source: Union["Switch", "Server"],
+        sink: Union["Switch", "Server"],
+        edges_to_exclude: Set["Edge"],
+    ) -> List[Union["Switch", "Server"]]:
+        """Find shortest path between two nodes based on Dijkstra's algorithm."""
+
+        current = self._find(source)
+        visited, unvisited = set(), set()
+        parent = dict.fromkeys(self.nodes, Node())
+        distances = dict.fromkeys(self.nodes, sys.maxsize)
+        distances[current] = 0
+        unvisited.add(current)
+
+        while current != sink and current != Node():
+            for neighbor in current.neighbors:
+                if neighbor in visited:
+                    continue
+
+                if Edge(current, neighbor) in edges_to_exclude:
+                    continue
+
+                unvisited.add(neighbor)
+                if distances[current] + 1 < distances[neighbor]:
+                    distances[neighbor] = distances[current] + 1
+                    parent[neighbor] = current
+
+            visited.add(current)
+            unvisited.remove(current)
+
+            min_distance = sys.maxsize
+            if not len(unvisited):
+                break
+
+            for neighbor in unvisited:
+                if distances[neighbor] <= min_distance:
+                    min_distance = distances[neighbor]
+                    current = neighbor
+
+        path = []
+        if current != sink:
+            return path
+
+        while True:
+            path.append(current)
+            current = parent[current]
+            if current == Node():
+                break
+
+        return path[::-1]
+
+    def find_shortest_paths(
+        self,
+        source: Union["Switch", "Server"],
+        sink: Union["Switch", "Server"],
+        num_shortest_paths: int,
+    ) -> List[List[Union["Switch", "Server"]]]:
+        """Find K shortest paths using Yen's algorithm.
+        https://en.wikipedia.org/wiki/Yen%27s_algorithm
+        """
+        shortest_paths: List[List] = []
+        potential_shortest_paths: Set[Tuple] = set()
+
+        edges_to_exclude = set()
+        shortest_paths.append(self.find_shortest_path(source, sink, edges_to_exclude))
+
+        for k in range(1, num_shortest_paths):
+            last_shortest_path = shortest_paths[-1]
+            for spur_node_index in range(len(last_shortest_path) - 1):
+                root_path = last_shortest_path[: spur_node_index + 1]
+                spur_node = last_shortest_path[spur_node_index]
+                for path in shortest_paths:
+                    if spur_node_index + 1 >= len(path):
+                        continue
+
+                    if root_path == path[: spur_node_index + 1]:
+                        spur_node_next = path[spur_node_index + 1]
+                        edges_to_exclude.add(Edge(spur_node, spur_node_next))
+                        edges_to_exclude.add(Edge(spur_node_next, spur_node))
+
+                spur_path = self.find_shortest_path(spur_node, sink, edges_to_exclude)
+                if spur_path:
+                    potential_shortest_paths.add(tuple(root_path[:-1] + spur_path))
+                edges_to_exclude.clear()
+
+            if not len(potential_shortest_paths):
+                break
+
+            shortest_path = sorted(
+                list(potential_shortest_paths), key=lambda x: len(x)
+            )[0]
+            potential_shortest_paths.remove(shortest_path)
+            shortest_paths.append(list(shortest_path))
+
+        return shortest_paths
+
+
+class Jellyfish(Topology):
+    """Jellyfish topology generator."""
+
+    def __init__(self, num_servers: int, num_switches: int, num_ports: int) -> None:
+        super().__init__(num_servers, num_switches, num_ports)
 
         self.num_ports_for_server = int(
-            math.ceil(float(self.num_servers) / self.num_switches)
+            math.ceil(float(num_servers) / num_switches)
         )
-        self.num_ports_for_switch = self.num_ports - self.num_ports_for_server
+        self.num_ports_for_switch = num_ports - self.num_ports_for_server
 
         self.switches_with_free_ports = []
         self.switches_without_free_ports = []
-        self.servers = []
 
-        for i in range(self.num_switches):
-            switch = Switch(i, self.num_ports)
+        for i in range(num_switches):
+            switch = Switch(i, num_ports)
             self.switches_with_free_ports.append(switch)
             for j in range(
                 i * self.num_ports_for_server, (i + 1) * self.num_ports_for_server
@@ -141,10 +277,20 @@ class Jellyfish:
                 self.servers.append(server)
                 switch.link(server)
 
-    def get_num_switches_with_free_ports(self) -> int:
+    @property
+    def switches(self) -> List["Switch"]:
+        return self.switches_with_free_ports + self.switches_without_free_ports
+
+    @switches.setter
+    def switches(self, value: List["Switch"]):
+        self._switches = value
+
+    @property
+    def num_switches_with_free_ports(self) -> int:
         return len(self.switches_with_free_ports)
 
-    def get_num_switches_without_free_ports(self) -> int:
+    @property
+    def num_switches_without_free_ports(self) -> int:
         return len(self.switches_without_free_ports)
 
     def _update_state(self, switch: Switch) -> None:
@@ -158,13 +304,13 @@ class Jellyfish:
 
     def _connect_switches(self) -> None:
         for switch1 in random.sample(
-            self.switches_with_free_ports, self.get_num_switches_with_free_ports()
+            self.switches_with_free_ports, self.num_switches_with_free_ports
         ):
             if switch1.num_free_ports == 0:
                 continue
 
             for switch2 in random.sample(
-                self.switches_with_free_ports, self.get_num_switches_with_free_ports()
+                self.switches_with_free_ports, self.num_switches_with_free_ports
             ):
                 if switch1.num_free_ports == 0:
                     break
@@ -181,16 +327,16 @@ class Jellyfish:
         while True:
             self._connect_switches()
 
-            if self.get_num_switches_with_free_ports() == 0:
+            if self.num_switches_with_free_ports == 0:
                 return
 
-            if self.get_num_switches_with_free_ports() == 1:
+            if self.num_switches_with_free_ports == 1:
                 if self.switches_with_free_ports[0].num_free_ports == 1:
                     return
 
             switch1 = random.choice(self.switches_with_free_ports)
             if switch1.num_free_ports == 1:
-                switch_to_unlink = random.choice(switch1.get_linked_switches())
+                switch_to_unlink = random.choice(switch1.linked_switches)
                 switch1.unlink(switch_to_unlink)
                 self._update_state(switch_to_unlink)
 
@@ -221,16 +367,12 @@ class Jellyfish:
     def plot(self, fname: str) -> None:
         g = nx.Graph()
         graph = []
-        for node in (
-            self.switches_without_free_ports
-            + self.switches_with_free_ports
-            + self.servers
-        ):
+        for node in self.nodes:
             # g.add_node(repr(node))
             for edge in node.edges:
                 # g.add_edge(repr(edge.left_node), repr(edge.right_node))
                 graph.append([repr(edge.left_node), repr(edge.right_node)])
-        
+
         g.add_edges_from(graph)
         nx.draw_networkx(g, with_labels=True, node_size=100)
         plt.show()
@@ -249,6 +391,9 @@ def parse_args():
         default="Figures/jellyfish.png",
     )
     parser.add_argument(
+        "--num_servers", help="Number of servers", action="store", type=int, default=16
+    )
+    parser.add_argument(
         "--num_switches",
         help="Number of switches",
         action="store",
@@ -262,9 +407,6 @@ def parse_args():
         type=int,
         default=4,
     )
-    parser.add_argument(
-        "--num_servers", help="Number of servers", action="store", type=int, default=16
-    )
     return parser.parse_args()
 
 
@@ -277,4 +419,3 @@ if __name__ == "__main__":
     )
     jellyfish.generate()
     jellyfish.plot(args.output)
-
