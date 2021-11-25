@@ -63,6 +63,6 @@ def statisticPathResult(shortestPathList):
         result[length]+=1
 
     # print result
-    for idx, val in enumerate(result):
-        print('Length {}: {}%'.format(idx, 100*round(val/sum(result), 2)))
+    # for idx, val in enumerate(result):
+    #     print('Length {}: {}%'.format(idx, 100*round(val/sum(result), 2)))
     return result
