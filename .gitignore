@@ -2,6 +2,7 @@ test.py
 .vagrant
 ubuntu-bionic-18.04-cloudimg-console.log
 Vagrantfile
+.DS_Store
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
