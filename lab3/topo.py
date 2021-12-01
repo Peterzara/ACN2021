@@ -78,27 +78,27 @@ class Fattree():
         for j in range(pod//2):
             for i in range(pod//2):
                 ip = '10.{}.{}.{}'.format(pod, j+1, i+1)
-                id = 'co{}'.format(_cnt)
+                id = 'sw{}'.format(_cnt)
                 swNode = Node(id, 'CORE_SWITCH', ip)
                 self.switchList.append(swNode)
                 _cnt += 1
 
         # generate aggregation switch
-        _cnt = 0
+        # _cnt = 0
         for p in range(pod):
             for i in range(pod//2):
                 ip = '10.{}.{}.1'.format(p, i+(pod//2))
-                id = 'a{}'.format(_cnt)
+                id = 'sw{}'.format(_cnt)
                 swNode = Node(id, 'AGGREGATION_SWITCH', ip)
                 self.switchList.append(swNode)
                 _cnt += 1
 
         # generate edge switch
-        _cnt = 0
+        # _cnt = 0
         for p in range(pod):
             for i in range(pod//2):
                 ip = '10.{}.{}.1'.format(p, i)
-                id = 'e{}'.format(_cnt)
+                id = 'sw{}'.format(_cnt)
                 swNode = Node(id, 'EDGE_SWITCH', ip)
                 self.switchList.append(swNode)
                 _cnt += 1
@@ -114,7 +114,6 @@ class Fattree():
                 co = self.switchList[core]
                 agg = self.switchList[core_sw_count + port*pod//2 + start]
                 co.add_edge(agg)
-                agg.add_edge(co)
             _cnt += 1
 
         # generate links between aggregation sw and edge sw
@@ -124,7 +123,6 @@ class Fattree():
                     a = self.switchList[core_sw_count + _pod*pod//2 + agg]
                     edge = self.switchList[core_sw_count + agg_sw_count + _pod*pod//2 + port]
                     a.add_edge(edge)
-                    edge.add_edge(a)
 
         # generate links between server and edge sw
         _cnt = 0
@@ -137,7 +135,6 @@ class Fattree():
                     server = Node(id, 'SERVER', ip)
                     self.servers.append(server)
                     e.add_edge(server)
-                    server.add_edge(a)
                     _cnt += 1
 
 # topos = {"fatTreeTopo":(lambda:Fattree(4))}

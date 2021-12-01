@@ -27,6 +27,10 @@ from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import packet
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import arp
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import lldp
+from ryu.lib.dpid import dpid_to_str, str_to_dpid
+
 
 from ryu.topology import event, switches
 from ryu.topology.api import get_switch, get_link
@@ -40,17 +44,28 @@ class SPRouter(app_manager.RyuApp):
 
     def __init__(self, *args, **kwargs):
         super(SPRouter, self).__init__(*args, **kwargs)
+        self.topology_api_app = self
         self.topo_net = topo.Fattree(4)
+        self.mac_to_port = {}
+        self.lldp_topo = {}
 
 
     # Topology discovery
     @set_ev_cls(event.EventSwitchEnter)
     def get_topology_data(self, ev):
-
         # Switches and links in the network
-        switches = get_switch(self, None)
-        links = get_link(self, None)
 
+        # get nodes
+        switch_list = get_switch(self.topology_api_app, None)
+        switches = [switch.dp.id for switch in switch_list]
+        print(" \t" + "Current Switches:")
+        print(switches)
+        # get links
+        links_list = get_link(self.topology_api_app, None)
+        links = [(dpid_to_str(link.src.dpid), dpid_to_str(link.dst.dpid), {
+                  'port': link.src.port_no}) for link in links_list]
+        print(" \t" + "Current Links:")
+        print(links)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -84,5 +99,41 @@ class SPRouter(app_manager.RyuApp):
         dpid = datapath.id
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
+        in_port = msg.match['in_port']
 
         # TODO: handle new packets at the controller
+        pkt = packet.Packet(msg.data)
+        eth = pkt.get_protocols(ethernet.ethernet)[0]
+
+        dst = eth.dst
+        src = eth.src
+
+        self.mac_to_port.setdefault(dpid, {})
+
+        # learn a mac address to avoid FLOOD next time.
+        self.mac_to_port[dpid][src] = in_port
+
+        if dst in self.mac_to_port[dpid]:
+            out_port = self.mac_to_port[dpid][dst]
+        else:
+            out_port = ofproto.OFPP_FLOOD
+
+        actions = [parser.OFPActionOutput(out_port)]
+
+        # install a flow to avoid packet_in next time
+        if out_port != ofproto.OFPP_FLOOD:
+            match = parser.OFPMatch(in_port=in_port, eth_dst=dst)
+            # verify if we have a valid buffer_id, if yes avoid to send both
+            # flow_mod & packet_out
+            if msg.buffer_id != ofproto.OFP_NO_BUFFER:
+                self.add_flow(datapath, 1, match, actions, msg.buffer_id)
+                return
+            else:
+                self.add_flow(datapath, 1, match, actions)
+        data = None
+        if msg.buffer_id == ofproto.OFP_NO_BUFFER:
+            data = msg.data
+
+        out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
+                                  in_port=in_port, actions=actions, data=data)
+        datapath.send_msg(out)
