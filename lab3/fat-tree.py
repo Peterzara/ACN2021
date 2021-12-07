@@ -90,7 +90,7 @@ def run(graph_topo):
 	
 	# Run the Mininet CLI with a given topology
 	lg.setLogLevel('info')
-	mininet.clean.cleanup()
+	# mininet.clean.cleanup()
 	net = make_mininet_instance(graph_topo)
 
 	info('*** Starting network ***\n')
