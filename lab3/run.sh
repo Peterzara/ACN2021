@@ -1,6 +1,6 @@
-# Copyright 2021 Lin Wang
+# Copyright 2020 Lin Wang
 
-# This code is part of the Advanced Computer Networks course at Vrije 
+# This code is part of the Advanced Computer Networks (2020) course at Vrije 
 # Universiteit Amsterdam.
 
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -18,5 +18,4 @@
 #!/bin/bash
 
 export PYTHONPATH="$PYTHONPATH:$HOME/mininet"
-sudo --preserve-env=PYTHONPATH python3 ./fat-tree.py
-# sudo ryu-manager --observe-links ./sp_routing.py --ofp-tcp-listen-port 6653
+sudo --preserve-env=PYTHONPATH python3 ./main.py
