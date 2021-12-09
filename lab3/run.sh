@@ -19,4 +19,4 @@
 
 export PYTHONPATH="$PYTHONPATH:$HOME/mininet"
 sudo --preserve-env=PYTHONPATH python3 ./fat-tree.py
-# sudo ryu-manager --observe-links ./sp_routing.py --ofp-tcp-listen-port 6653
+# sudo --preserve-env=PYTHONPATH python3 ./ft_topo.py
