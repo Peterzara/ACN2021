@@ -238,7 +238,7 @@ if __name__ == "__main__":
     lg.setLogLevel("info")
     cleanup()
 
-    net = Mininet(topo=FatTreeNet(FatTree(4)), controller=None, autoSetMacs=True)
+    net = Mininet(topo=FatTreeNet(FatTree(4)), controller=None, autoSetMacs=True) # xterms=True)
     net.addController("c0", controller=RemoteController, ip="127.0.0.1", port=6653)
 
     info("*** Starting network ***\n")

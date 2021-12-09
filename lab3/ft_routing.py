@@ -213,6 +213,8 @@ class FTRouter(app_manager.RyuApp):
             and msg_pkt_eth.ethertype == ether_types.ETH_TYPE_IP
         ):
             match = parser.OFPMatch(in_port=in_port, eth_dst=dst_mac)
+            # with open("results/two_level_routing_table.txt.txt", "a") as f:
+            #     f.write(f'dpid:sw{dpid}, dst_id:{self.node_id_by_ip[dst_ip]}, next_dpid:{next_dpid}\n')
             self.add_flow(datapath, priority, match, actions)
 
         out = parser.OFPPacketOut(
