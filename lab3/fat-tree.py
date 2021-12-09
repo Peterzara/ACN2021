@@ -30,6 +30,7 @@ from mininet.link import TCLink
 from mininet.node import Node, OVSKernelSwitch, RemoteController
 from mininet.topo import Topo
 from mininet.util import waitListening, custom
+from mininet.link import TCLink
 from typing import List
 
 import topo
@@ -67,7 +68,7 @@ class FattreeNet(Topo):
 						self.addHost(neighbor.id, ip=neighbor.ip)
 					else:
 						self.addSwitch(neighbor.id)
-					self.addLink(switch.id, neighbor.id, bw=15, delay='5ms')
+					self.addLink(switch.id, neighbor.id, bw=15, delay='5ms', cls=TCLink)
 
 
 	def __init__(self, ft_topo):
