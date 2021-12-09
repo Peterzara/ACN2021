@@ -107,7 +107,7 @@ class SPRouter(app_manager.RyuApp):
             return
         
         if eth.ethertype == ether.ETH_TYPE_ARP:
-            self.logger.info("ARP packet in %s %s", datapath.id, in_port)
+            # self.logger.info("ARP packet in %s %s", datapath.id, in_port)
             
             src_ip = arp_pkt.src_ip
             dst_ip = arp_pkt.dst_ip
@@ -129,8 +129,8 @@ class SPRouter(app_manager.RyuApp):
                         port=in_port,
                         host_mac=arp_pkt.src_mac,
                         )
-            print("switchToHost")
-            print(self.TopoEntity.ServerEntity.dpid_2_ip_2_port_dict)
+            # print("switchToHost")
+            # print(self.TopoEntity.ServerEntity.dpid_2_ip_2_port_dict)
 
             # Check if the dst_ip exists in the topology
             dst_dpid = self.TopoEntity.ServerEntity.get_dpid_for_ip(ip = dst_ip)
@@ -145,9 +145,8 @@ class SPRouter(app_manager.RyuApp):
                     self.TopoEntity.install_path_to_switch(reversed_shortest_link_path, src_ip, dst_ip)
                     self.TopoEntity.install_path_to_switch(shortest_link_path, dst_ip, src_ip)
                 else:
-                    print("The src {} and dst {} are in the same switch".format(src_ip, dst_ip))
+                    # print("The src {} and dst {} are in the same switch".format(src_ip, dst_ip))
                     self.TopoEntity.install_path_to_switch(None, src_ip, dst_ip)
-                    # self.TopoEntity.install_path_to_switch(None, dst_ip, src_ip)
 
                 if arp_pkt.opcode == arp.ARP_REQUEST:
                     self.send_arp_reply(
@@ -198,5 +197,5 @@ class SPRouter(app_manager.RyuApp):
             in_port=ofproto.OFPP_CONTROLLER,
             actions=actions,
             data=arp_reply.data)
-        print("send_arp_reply")
+        # print("send_arp_reply")
         datapath.send_msg(out)

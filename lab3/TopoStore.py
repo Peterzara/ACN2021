@@ -55,8 +55,33 @@ class TopoStore:
                         prev_of_sw[link.dst.dpid] = min_sw
 
         print("dist_of_sw: ", dist_of_sw)
-        print("prev_of_sw: ", prev_of_sw)
+        # print("prev_of_sw: ", prev_of_sw)
+        self.print_all_shortest_path(prev_of_sw)
         return prev_of_sw
+    
+    def print_all_shortest_path(self, prew_of_sw):
+        print('----------------------------------------------------')
+        path = []
+        pathList = []
+        for key, val in prew_of_sw.items():
+            path.append(key)
+            path.append(val)
+            while key != val:
+                for _key, _val in prew_of_sw.items():
+                    if _key == val:
+                        path.append(_val)
+                        val = _val
+                        key = _key
+                        break
+            pathList.append(reversed(path))
+            path = []
+        
+        for li in pathList:
+            if li is None:
+                continue
+            temp = [1 if x > 20 else x+1 for x in li]
+            print(*temp, sep='->sw')
+
 
     def calculate_link_path(self, src_dpid, dst_dpid, prev_of_sw) -> list:
         """
@@ -67,7 +92,7 @@ class TopoStore:
         while curr is not src_dpid:
             parent_sw = prev_of_sw[curr]
             if curr is None:
-                print("No path from %s to %s" % (src_dpid, dst_dpid))
+                # print("No path from %s to %s" % (src_dpid, dst_dpid))
                 return []
             else:
                 # find the LINK which connects the curr switch and the previous switch
@@ -143,9 +168,9 @@ class TopoStore:
                 
                 if connected_port_to_dst_host > 0:
                     self._add_new_flow(dst_mac, ofp_parser, in_port, dst_datapath, connected_port_to_dst_host)
-                    print("Install the last link")
-                else:
-                    print("No port connected to the host")
+                    # print("Install the last link")
+                # else:
+                #     print("No port connected to the host")
 
     def _add_new_flow(self, dst_mac, ofp_parser, in_port, dst_datapath, connected_port_to_dst_host):
         match = ofp_parser.OFPMatch(in_port=in_port, eth_dst=dst_mac)
