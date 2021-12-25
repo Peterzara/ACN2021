@@ -1,10 +1,10 @@
 
-[2021-12-22 15:34:07.942] /p4.v1.P4Runtime/SetForwardingPipelineConfig
+[2021-12-22 20:07:37.570] /p4.v1.P4Runtime/SetForwardingPipelineConfig
 ---
-Message too long (30870 bytes)! Skipping log...
+Message too long (30701 bytes)! Skipping log...
 ---
 
-[2021-12-22 15:34:07.958] /p4.v1.P4Runtime/Write
+[2021-12-22 20:07:37.586] /p4.v1.P4Runtime/Write
 ---
 device_id: 3
 election_id {
@@ -26,7 +26,7 @@ updates {
 }
 ---
 
-[2021-12-22 15:34:07.972] /p4.v1.P4Runtime/Write
+[2021-12-22 20:07:37.593] /p4.v1.P4Runtime/Write
 ---
 device_id: 3
 election_id {
@@ -62,7 +62,7 @@ updates {
 }
 ---
 
-[2021-12-22 15:34:07.982] /p4.v1.P4Runtime/Write
+[2021-12-22 20:07:37.600] /p4.v1.P4Runtime/Write
 ---
 device_id: 3
 election_id {
@@ -98,7 +98,7 @@ updates {
 }
 ---
 
-[2021-12-22 15:34:07.989] /p4.v1.P4Runtime/Write
+[2021-12-22 20:07:37.608] /p4.v1.P4Runtime/Write
 ---
 device_id: 3
 election_id {

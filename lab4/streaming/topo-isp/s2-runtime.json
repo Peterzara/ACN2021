@@ -48,8 +48,7 @@
       "action_name": "MyIngress.set_multicast",
       "action_params": {
         "dstAddr": "08:00:00:00:05:00",
-        "port": 2,
-        "mcast_grp_id": 1
+        "port": 2
       }
     },
     {

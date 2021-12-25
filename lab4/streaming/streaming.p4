@@ -136,9 +136,9 @@ control MyIngress(inout headers hdr,
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
 
-    action set_multicast(macAddr_t dstAddr, egressSpec_t port, bit<16> mcast_grp_id) {
+    action set_multicast(macAddr_t dstAddr, egressSpec_t port) {
         if(hdr.udp.isValid()) { 
-            standard_metadata.mcast_grp = mcast_grp_id;
+            standard_metadata.mcast_grp = 1;
          } else {
             ipv4_forward(dstAddr, port);
          }
